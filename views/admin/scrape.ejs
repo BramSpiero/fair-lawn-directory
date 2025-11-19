@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrape Businesses - Fair Lawn Directory</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem 0;
+        }
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        h1 { font-size: 1.8rem; }
+        h2 { color: #667eea; margin-bottom: 1rem; }
+        .form-group { margin-bottom: 1.5rem; }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+        textarea {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-family: inherit;
+            font-size: 1rem;
+            min-height: 120px;
+        }
+        .help-text {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+        .suggested-types {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .type-tag {
+            padding: 0.5rem 1rem;
+            background: #e9ecef;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .type-tag:hover {
+            background: #667eea;
+            color: white;
+        }
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover { background: #764ba2; }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-secondary:hover { background: #5a6268; }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1.5rem;
+        }
+        .warning strong { color: #856404; }
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+            margin-left: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>🔍 Scrape Businesses</h1>
+            <div>
+                <a href="/admin/dashboard">Dashboard</a>
+                <a href="/admin/logout">Logout</a>
+            </div>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="card">
+            <h2>AI-Powered Business Scraper</h2>
+            
+            <div class="warning">
+                <strong>⚠️ Note:</strong> This will search Google Places for businesses and generate AI descriptions. 
+                Each business type typically returns 10-20 results. API costs: ~$0.01 per business.
+            </div>
+            
+            <form method="POST" action="/admin/scrape">
+                <div class="form-group">
+                    <label for="businessTypes">Business Types to Scrape</label>
+                    <textarea 
+                        id="businessTypes" 
+                        name="businessTypes" 
+                        placeholder="plumber, electrician, general contractor"
+                        required
+                    ></textarea>
+                    <div class="help-text">
+                        Enter business types separated by commas. Each type will be searched.
+                    </div>
+                </div>
+                
+                <div class="suggested-types">
+                    <strong style="width: 100%; margin-bottom: 0.5rem;">Quick Add (click to add to list):</strong>
+                    <span class="type-tag" onclick="addType('plumber')">Plumber</span>
+                    <span class="type-tag" onclick="addType('electrician')">Electrician</span>
+                    <span class="type-tag" onclick="addType('general contractor')">General Contractor</span>
+                    <span class="type-tag" onclick="addType('hvac contractor')">HVAC Contractor</span>
+                    <span class="type-tag" onclick="addType('roofing contractor')">Roofing Contractor</span>
+                    <span class="type-tag" onclick="addType('painter')">Painter</span>
+                    <span class="type-tag" onclick="addType('carpenter')">Carpenter</span>
+                    <span class="type-tag" onclick="addType('handyman')">Handyman</span>
+                    <span class="type-tag" onclick="addType('locksmith')">Locksmith</span>
+                    <span class="type-tag" onclick="addType('landscaper')">Landscaper</span>
+                </div>
+                
+                <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                    <button type="submit" class="btn btn-primary">🚀 Start Scraping</button>
+                    <a href="/admin/dashboard" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h2>What This Does:</h2>
+            <ol style="line-height: 2;">
+                <li>Searches Google Places for each business type in Fair Lawn, NJ</li>
+                <li>Retrieves: name, address, phone, website, ratings, hours, location</li>
+                <li>Generates AI-powered description using Claude</li>
+                <li>Creates SEO keywords for each business</li>
+                <li>Saves to database with "pending" status for review</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        function addType(type) {
+            const textarea = document.getElementById('businessTypes');
+            const current = textarea.value.trim();
+            if (current) {
+                textarea.value = current + ', ' + type;
+            } else {
+                textarea.value = type;
+            }
+        }
+    </script>
+</body>
+</html>

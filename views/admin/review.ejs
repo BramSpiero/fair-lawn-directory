@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Business - Fair Lawn Directory</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem 0;
+        }
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        h2 { color: #667eea; margin-bottom: 1.5rem; }
+        .form-group { margin-bottom: 1.5rem; }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+        input[type="text"],
+        input[type="tel"],
+        input[type="url"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+        .readonly {
+            background: #f8f9fa;
+            color: #666;
+        }
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn:hover { opacity: 0.9; }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        .info-item {
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .info-label {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 0.25rem;
+        }
+        .info-value {
+            font-weight: 600;
+            color: #333;
+        }
+        .rating {
+            color: #ffc107;
+            font-size: 1.2rem;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>📝 Review Business</h1>
+            <nav>
+                <a href="/admin/dashboard">← Back to Dashboard</a>
+            </nav>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- Scraped Data Info -->
+        <div class="card">
+            <h2>📊 Scraped Information</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Google Place ID</div>
+                    <div class="info-value"><%= business.google_place_id %></div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Category</div>
+                    <div class="info-value"><%= business.category %> - <%= business.subcategory %></div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Rating</div>
+                    <div class="info-value">
+                        <% if (business.rating) { %>
+                        <span class="rating">⭐ <%= business.rating %></span> (<%= business.total_ratings %> reviews)
+                        <% } else { %>
+                        No rating yet
+                        <% } %>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Location</div>
+                    <div class="info-value"><%= business.latitude %>, <%= business.longitude %></div>
+                </div>
+                <% if (business.google_maps_url) { %>
+                <div class="info-item" style="grid-column: 1 / -1;">
+                    <div class="info-label">Google Maps</div>
+                    <div class="info-value">
+                        <a href="<%= business.google_maps_url %>" target="_blank" style="color: #667eea;">
+                            View on Google Maps →
+                        </a>
+                    </div>
+                </div>
+                <% } %>
+            </div>
+        </div>
+        
+        <!-- Edit Form -->
+        <div class="card">
+            <h2>✏️ Edit & Approve</h2>
+            <form method="POST" action="/admin/business/<%= business.id %>/update">
+                <div class="form-group">
+                    <label for="name">Business Name *</label>
+                    <input type="text" id="name" name="name" value="<%= business.name %>" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Description *</label>
+                    <textarea id="description" name="description" required><%= business.description %></textarea>
+                    <div style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">
+                        AI-generated description. Edit as needed.
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">Phone</label>
+                    <input type="tel" id="phone" name="phone" value="<%= business.phone || '' %>">
+                </div>
+                
+                <div class="form-group">
+                    <label for="website">Website</label>
+                    <input type="url" id="website" name="website" value="<%= business.website || '' %>">
+                </div>
+                
+                <div class="form-group">
+                    <label>Address (from Google)</label>
+                    <input type="text" class="readonly" value="<%= business.street %>, <%= business.city %>, <%= business.state %> <%= business.zip %>" readonly>
+                </div>
+                
+                <% if (business.keywords && business.keywords.length > 0) { %>
+                <div class="form-group">
+                    <label>SEO Keywords (AI-generated)</label>
+                    <div style="padding: 1rem; background: #f8f9fa; border-radius: 5px;">
+                        <% business.keywords.forEach(keyword => { %>
+                        <span style="display: inline-block; padding: 0.3rem 0.8rem; margin: 0.25rem; background: white; border-radius: 15px; font-size: 0.85rem;">
+                            <%= keyword %>
+                        </span>
+                        <% }); %>
+                    </div>
+                </div>
+                <% } %>
+                
+                <div class="form-group">
+                    <label for="status">Status *</label>
+                    <select id="status" name="status" required>
+                        <option value="pending" <%= business.status === 'pending' ? 'selected' : '' %>>Pending</option>
+                        <option value="approved" <%= business.status === 'approved' ? 'selected' : '' %>>Approved</option>
+                    </select>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+                    <% if (business.status === 'pending') { %>
+                    <a href="#" onclick="document.getElementById('status').value='approved'; this.closest('form').submit(); return false;" 
+                       class="btn btn-success">✓ Save & Approve</a>
+                    <% } %>
+                    <a href="/admin/dashboard" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

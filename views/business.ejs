@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= business.name %> - Fair Lawn, NJ</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .back-link:hover { text-decoration: underline; }
+        .business-header {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .business-header h2 {
+            color: #667eea;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        .category-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: #667eea;
+            color: white;
+            border-radius: 20px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+        .rating {
+            color: #ffc107;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+        }
+        .info-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .info-section h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        .contact-info {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.8rem;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .keyword {
+            padding: 0.4rem 0.8rem;
+            background: #e9ecef;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            color: #495057;
+        }
+        .map-container {
+            height: 400px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 2rem 0;
+            margin-top: 4rem;
+        }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+    <header>
+        <h1>🏘️ Fair Lawn Business Directory</h1>
+    </header>
+    
+    <div class="container">
+        <a href="/" class="back-link">← Back to All Businesses</a>
+        
+        <div class="business-header">
+            <h2><%= business.name %></h2>
+            <span class="category-badge"><%= business.subcategory || business.category %></span>
+            
+            <% if (business.rating) { %>
+            <div class="rating">
+                ⭐ <%= business.rating %> (<%= business.total_ratings %> reviews)
+            </div>
+            <% } %>
+        </div>
+        
+        <div class="info-section">
+            <h3>About <%= business.name %></h3>
+            <p><%= business.description %></p>
+        </div>
+        
+        <div class="info-section">
+            <h3>Contact Information</h3>
+            <div class="contact-info">
+                <div class="contact-item">
+                    <span>📍</span>
+                    <span><%= business.street %>, <%= business.city %>, <%= business.state %> <%= business.zip %></span>
+                </div>
+                <% if (business.phone) { %>
+                <div class="contact-item">
+                    <span>📞</span>
+                    <a href="tel:<%= business.phone %>" style="color: #667eea; text-decoration: none;">
+                        <%= business.phone %>
+                    </a>
+                </div>
+                <% } %>
+                <% if (business.website) { %>
+                <div class="contact-item">
+                    <span>🌐</span>
+                    <a href="<%= business.website %>" target="_blank" style="color: #667eea;">
+                        Visit Website →
+                    </a>
+                </div>
+                <% } %>
+                <% if (business.google_maps_url) { %>
+                <div class="contact-item">
+                    <span>🗺️</span>
+                    <a href="<%= business.google_maps_url %>" target="_blank" style="color: #667eea;">
+                        View on Google Maps →
+                    </a>
+                </div>
+                <% } %>
+            </div>
+        </div>
+        
+        <% if (business.keywords && business.keywords.length > 0) { %>
+        <div class="info-section">
+            <h3>Services & Keywords</h3>
+            <div class="keywords">
+                <% business.keywords.forEach(keyword => { %>
+                <span class="keyword"><%= keyword %></span>
+                <% }); %>
+            </div>
+        </div>
+        <% } %>
+        
+        <% if (business.latitude && business.longitude) { %>
+        <div class="info-section">
+            <h3>Location</h3>
+            <div id="map" class="map-container"></div>
+        </div>
+        <% } %>
+    </div>
+    
+    <footer>
+        <p>&copy; 2024 Fair Lawn Business Directory. All rights reserved.</p>
+    </footer>
+    
+    <% if (business.latitude && business.longitude) { %>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([<%= business.latitude %>, <%= business.longitude %>], 15);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        
+        L.marker([<%= business.latitude %>, <%= business.longitude %>])
+            .addTo(map)
+            .bindPopup('<strong><%= business.name %></strong><br><%= business.street %>')
+            .openPopup();
+    </script>
+    <% } %>
+</body>
+</html>

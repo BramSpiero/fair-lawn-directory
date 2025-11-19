@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Fair Lawn Directory</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-links { display: flex; gap: 1rem; }
+        .header-links a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 0.5rem;
+        }
+        .section {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        h2 { color: #333; }
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover { background: #764ba2; }
+        .btn-success {
+            background: #28a745;
+            color: white;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        tr:hover { background: #f8f9fa; }
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+        .rating {
+            color: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>📊 Admin Dashboard</h1>
+            <div class="header-links">
+                <a href="/">View Site</a>
+                <a href="/admin/scrape">🔍 Scrape Businesses</a>
+                <a href="/admin/logout">Logout</a>
+            </div>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number"><%= pendingBusinesses.length %></div>
+                <div class="stat-label">Pending Review</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number"><%= approvedBusinesses.length %></div>
+                <div class="stat-label">Approved</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number"><%= pendingBusinesses.length + approvedBusinesses.length %></div>
+                <div class="stat-label">Total Businesses</div>
+            </div>
+        </div>
+        
+        <!-- Pending Businesses -->
+        <div class="section">
+            <div class="section-header">
+                <h2>⏳ Pending Review (<%= pendingBusinesses.length %>)</h2>
+            </div>
+            
+            <% if (pendingBusinesses.length > 0) { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Address</th>
+                        <th>Rating</th>
+                        <th>Scraped</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% pendingBusinesses.forEach(business => { %>
+                    <tr>
+                        <td><strong><%= business.name %></strong></td>
+                        <td><%= business.subcategory || business.category %></td>
+                        <td><%= business.street %>, <%= business.city %></td>
+                        <td>
+                            <% if (business.rating) { %>
+                            <span class="rating">⭐ <%= business.rating %></span> (<%= business.total_ratings %>)
+                            <% } else { %>
+                            <span style="color: #999;">No rating</span>
+                            <% } %>
+                        </td>
+                        <td><%= new Date(business.scraped_at).toLocaleDateString() %></td>
+                        <td>
+                            <div class="actions">
+                                <a href="/admin/business/<%= business.id %>/review" class="btn btn-secondary">Review</a>
+                                <form method="POST" action="/admin/business/<%= business.id %>/approve" style="display: inline;">
+                                    <button type="submit" class="btn btn-success">✓ Approve</button>
+                                </form>
+                                <form method="POST" action="/admin/business/<%= business.id %>/delete" style="display: inline;" 
+                                      onsubmit="return confirm('Delete <%= business.name %>?');">
+                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            <% } else { %>
+            <div class="empty-state">
+                <h3>No pending businesses</h3>
+                <p>Scrape some businesses to get started!</p>
+                <a href="/admin/scrape" class="btn btn-primary" style="margin-top: 1rem;">🔍 Start Scraping</a>
+            </div>
+            <% } %>
+        </div>
+        
+        <!-- Approved Businesses -->
+        <div class="section">
+            <div class="section-header">
+                <h2>✅ Approved Businesses (<%= approvedBusinesses.length %>)</h2>
+            </div>
+            
+            <% if (approvedBusinesses.length > 0) { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Address</th>
+                        <th>Rating</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% approvedBusinesses.forEach(business => { %>
+                    <tr>
+                        <td><strong><%= business.name %></strong></td>
+                        <td><%= business.subcategory || business.category %></td>
+                        <td><%= business.street %>, <%= business.city %></td>
+                        <td>
+                            <% if (business.rating) { %>
+                            <span class="rating">⭐ <%= business.rating %></span> (<%= business.total_ratings %>)
+                            <% } else { %>
+                            <span style="color: #999;">No rating</span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <div class="actions">
+                                <a href="/business/<%= business.slug %>" target="_blank" class="btn btn-secondary">View</a>
+                                <a href="/admin/business/<%= business.id %>/review" class="btn btn-secondary">Edit</a>
+                                <form method="POST" action="/admin/business/<%= business.id %>/delete" style="display: inline;" 
+                                      onsubmit="return confirm('Delete <%= business.name %>?');">
+                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            <% } else { %>
+            <div class="empty-state">
+                <p>No approved businesses yet.</p>
+            </div>
+            <% } %>
+        </div>
+    </div>
+</body>
+</html>
