@@ -180,14 +180,30 @@
         
         <!-- Pending Businesses -->
         <div class="section">
-            <div class="section-header">
-                <h2>⏳ Pending Review (<%= pendingBusinesses.length %>)</h2>
-            </div>
+           <div class="section-header" style="flex-direction: column; align-items: stretch; gap: 1rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>⏳ Pending Review (<%= pendingBusinesses.length %>)</h2>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <label for="categoryFilter" style="font-weight: 600;">Filter by Category:</label>
+            <select id="categoryFilter" class="btn" style="padding: 0.5rem 1rem;">
+                <option value="">All Categories</option>
+            </select>
+            <span id="filteredCount" style="color: #666; font-size: 0.9rem;"></span>
+        </div>
+    </div>
+    <div id="bulkActions" style="display: none; padding: 1rem; background: #f8f9fa; border-radius: 5px; gap: 1rem; align-items: center;">
+        <span id="selectedCount" style="font-weight: 600;">0 selected</span>
+        <button id="bulkApprove" class="btn btn-success">✓ Approve Selected</button>
+        <button id="bulkReject" class="btn btn-danger">✗ Delete Selected</button>
+        <button id="clearSelection" class="btn btn-secondary">Clear Selection</button>
+    </div>
+</div>
             
             <% if (pendingBusinesses.length > 0) { %>
             <table>
                 <thead>
                     <tr>
+                        <th><input type="checkbox" id="selectAll"></th>
                         <th>Name</th>
                         <th>Type</th>
                         <th>Address</th>
@@ -199,6 +215,7 @@
                 <tbody>
                     <% pendingBusinesses.forEach(business => { %>
                     <tr>
+                        <td><input type="checkbox" class="business-checkbox" data-id="<%= business.id %>"></td>
                         <td><strong><%= business.name %></strong></td>
                         <td><%= business.subcategory || business.category %></td>
                         <td><%= business.street %>, <%= business.city %></td>
@@ -286,5 +303,154 @@
             <% } %>
         </div>
     </div>
+    <script>
+        // Category filtering for pending businesses
+        const categoryFilter = document.getElementById('categoryFilter');
+        const filteredCount = document.getElementById('filteredCount');
+        const pendingTable = document.querySelector('.section table tbody');
+        const allRows = pendingTable ? Array.from(pendingTable.querySelectorAll('tr')) : [];
+        
+        // Extract unique categories from the table
+        const categories = new Set();
+        allRows.forEach(row => {
+            const categoryCell = row.cells[2]; // Type column
+            if (categoryCell) {
+                categories.add(categoryCell.textContent.trim());
+            }
+        });
+        
+        // Populate dropdown with categories (sorted)
+        Array.from(categories).sort().forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            categoryFilter.appendChild(option);
+        });
+        
+        // Filter function
+        categoryFilter.addEventListener('change', function() {
+            const selectedCategory = this.value;
+            let visibleCount = 0;
+            
+            allRows.forEach(row => {
+                const categoryCell = row.cells[2];
+                const rowCategory = categoryCell ? categoryCell.textContent.trim() : '';
+                
+                if (selectedCategory === '' || rowCategory === selectedCategory) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Update count display
+            if (selectedCategory) {
+                filteredCount.textContent = `Showing ${visibleCount} of ${allRows.length}`;
+            } else {
+                filteredCount.textContent = '';
+            }
+        });
+        // Bulk actions functionality
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const businessCheckboxes = document.querySelectorAll('.business-checkbox');
+        const bulkActionsBar = document.getElementById('bulkActions');
+        const selectedCountSpan = document.getElementById('selectedCount');
+        const bulkApproveBtn = document.getElementById('bulkApprove');
+        const bulkRejectBtn = document.getElementById('bulkReject');
+        const clearSelectionBtn = document.getElementById('clearSelection');
+        
+        // Update bulk actions bar visibility and count
+        function updateBulkActions() {
+            const checkedBoxes = document.querySelectorAll('.business-checkbox:checked');
+            const count = checkedBoxes.length;
+            
+            if (count > 0) {
+                bulkActionsBar.style.display = 'flex';
+                selectedCountSpan.textContent = `${count} selected`;
+            } else {
+                bulkActionsBar.style.display = 'none';
+            }
+            
+            // Update "Select All" checkbox state
+            const visibleCheckboxes = Array.from(businessCheckboxes).filter(cb => 
+                cb.closest('tr').style.display !== 'none'
+            );
+            const visibleChecked = visibleCheckboxes.filter(cb => cb.checked);
+            selectAllCheckbox.checked = visibleCheckboxes.length > 0 && 
+                                        visibleChecked.length === visibleCheckboxes.length;
+        }
+        
+        // Select all functionality
+        selectAllCheckbox.addEventListener('change', function() {
+            const visibleCheckboxes = Array.from(businessCheckboxes).filter(cb => 
+                cb.closest('tr').style.display !== 'none'
+            );
+            visibleCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateBulkActions();
+        });
+        
+        // Individual checkbox changes
+        businessCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateBulkActions);
+        });
+        
+        // Clear selection
+        clearSelectionBtn.addEventListener('click', function() {
+            businessCheckboxes.forEach(cb => cb.checked = false);
+            selectAllCheckbox.checked = false;
+            updateBulkActions();
+        });
+        
+        // Bulk approve
+        bulkApproveBtn.addEventListener('click', async function() {
+            const checkedBoxes = document.querySelectorAll('.business-checkbox:checked');
+            const ids = Array.from(checkedBoxes).map(cb => cb.dataset.id);
+            
+            if (!confirm(`Approve ${ids.length} businesses?`)) return;
+            
+            try {
+                const response = await fetch('/admin/businesses/bulk-approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids })
+                });
+                
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Error approving businesses');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+        
+        // Bulk delete
+        bulkRejectBtn.addEventListener('click', async function() {
+            const checkedBoxes = document.querySelectorAll('.business-checkbox:checked');
+            const ids = Array.from(checkedBoxes).map(cb => cb.dataset.id);
+            
+            if (!confirm(`Delete ${ids.length} businesses? This cannot be undone.`)) return;
+            
+            try {
+                const response = await fetch('/admin/businesses/bulk-delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids })
+                });
+                
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Error deleting businesses');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+    </script>
 </body>
 </html>

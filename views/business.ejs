@@ -3,7 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= business.name %> - Fair Lawn, NJ</title>
+    <title><%= business.name %> - <%= business.subcategory || business.category %> in Fair Lawn, NJ</title>
+<meta name="description" content="<%= business.description ? business.description.substring(0, 160) : business.name + ' - ' + (business.subcategory || business.category) + ' located at ' + business.street + ', Fair Lawn, NJ' %>">
+<meta name="keywords" content="<%= business.keywords ? business.keywords.join(', ') : '' %>, Fair Lawn, <%= business.category %>">
+<meta name="author" content="Fair Lawn Business Directory">
+
+<!-- Open Graph / Social Media -->
+<meta property="og:type" content="business.business">
+<meta property="og:url" content="http://localhost:3000/business/<%= business.slug %>">
+<meta property="og:title" content="<%= business.name %> - Fair Lawn, NJ">
+<meta property="og:description" content="<%= business.description ? business.description.substring(0, 160) : business.name + ' in Fair Lawn, NJ' %>">
+<meta property="og:image" content="http://localhost:3000/images/og-image.jpg">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="<%= business.name %>">
+<meta name="twitter:description" content="<%= business.subcategory || business.category %> in Fair Lawn, NJ">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -206,5 +221,46 @@
             .openPopup();
     </script>
     <% } %>
+<!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "name": "<%= business.name %>",
+      "description": "<%= business.description || '' %>",
+      <% if (business.rating) { %>
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "<%= business.rating %>",
+        "reviewCount": "<%= business.total_ratings %>"
+      },
+      <% } %>
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "<%= business.street %>",
+        "addressLocality": "<%= business.city %>",
+        "addressRegion": "<%= business.state %>",
+        "postalCode": "<%= business.zip %>",
+        "addressCountry": "US"
+      },
+      <% if (business.phone) { %>
+      "telephone": "<%= business.phone %>",
+      <% } %>
+      <% if (business.website) { %>
+      "url": "<%= business.website %>",
+      <% } %>
+      <% if (business.latitude && business.longitude) { %>
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": "<%= business.latitude %>",
+        "longitude": "<%= business.longitude %>"
+      },
+      <% } %>
+      <% if (business.price_level) { %>
+      "priceRange": "<%= '€'.repeat(business.price_level) %>",
+      <% } %>
+      "image": "http://localhost:3000/images/og-image.jpg"
+    }
+    </script>
 </body>
 </html>

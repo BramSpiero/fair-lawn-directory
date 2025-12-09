@@ -10,8 +10,11 @@ const PORT = process.env.PORT || 3000;
 
 // Database connection
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_DATABASE,
+  password: process.env.DB_PASSWORD,
+  port: process.env.DB_PORT
 });
 
 // Test database connection
@@ -37,18 +40,134 @@ app.use(session({
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Initialize scraper
-const scraper = new BusinessScraper(process.env.GOOGLE_PLACES_API_KEY);
+// Scraper will be initialized with municipality in the scrape route
+// (no global scraper instance needed)
 
 // ==================== PUBLIC ROUTES ====================
 
-// Homepage - show all approved businesses
+// Homepage - show all approved businesses with optional search and filters
 app.get('/', async (req, res) => {
   try {
-    const result = await pool.query(
-      "SELECT * FROM businesses WHERE status = 'approved' ORDER BY name"
+    const searchQuery = req.query.search || '';
+    const categoryFilter = req.query.category || '';
+    const minRating = req.query.rating || '';
+    const priceLevel = req.query.price || '';
+    
+    let query = "SELECT * FROM businesses WHERE status = 'approved'";
+    let params = [];
+    let paramCount = 0;
+    
+    // Search filter
+    if (searchQuery) {
+      paramCount++;
+      query += ` AND (
+        name ILIKE $${paramCount} OR 
+        description ILIKE $${paramCount} OR 
+        category ILIKE $${paramCount} OR 
+        subcategory ILIKE $${paramCount} OR
+        $${paramCount + 1} = ANY(keywords)
+      )`;
+      params.push(`%${searchQuery}%`, searchQuery);
+      paramCount++;
+    }
+    
+    // Category filter
+    if (categoryFilter) {
+      paramCount++;
+      query += ` AND category = $${paramCount}`;
+      params.push(categoryFilter);
+    }
+    
+    // Rating filter
+    if (minRating) {
+      paramCount++;
+      query += ` AND rating >= $${paramCount}`;
+      params.push(parseFloat(minRating));
+    }
+    
+    // Price level filter
+    if (priceLevel) {
+      paramCount++;
+      query += ` AND price_level = $${paramCount}`;
+      params.push(parseInt(priceLevel));
+    }
+    
+    // Sorting
+const sortBy = req.query.sort || 'name';
+const sortOptions = {
+  'name': 'name ASC',
+  'rating': 'rating DESC NULLS LAST',
+  'reviews': 'total_ratings DESC',
+  'newest': 'scraped_at DESC'
+};
+
+query += ` ORDER BY ${sortOptions[sortBy] || 'name ASC'}`;
+
+// Get total count first (for pagination) - build separate count query
+let countQuery = "SELECT COUNT(*) FROM businesses WHERE status = 'approved'";
+// Add same filters as main query
+if (searchQuery) {
+  countQuery += ` AND (name ILIKE $1 OR description ILIKE $1 OR category ILIKE $1 OR subcategory ILIKE $1 OR $2 = ANY(keywords))`;
+}
+if (categoryFilter) {
+  const paramNum = paramCount;
+  countQuery += ` AND category = $${paramNum}`;
+}
+if (minRating) {
+  const paramNum = paramCount - (priceLevel ? 1 : 0);
+  countQuery += ` AND rating >= $${paramNum}`;
+}
+if (priceLevel) {
+  countQuery += ` AND price_level = $${paramCount}`;
+}
+const countResult = await pool.query(countQuery, params);
+const totalBusinesses = parseInt(countResult.rows[0].count);
+    
+    // Pagination
+    const page = parseInt(req.query.page) || 1;
+    const perPage = 24;
+    const totalPages = Math.ceil(totalBusinesses / perPage);
+    const offset = (page - 1) * perPage;
+    
+    query += ` LIMIT ${perPage} OFFSET ${offset}`;
+    
+    const result = await pool.query(query, params);
+    
+    // Get unique categories for filter dropdown
+    const categoriesResult = await pool.query(
+      "SELECT DISTINCT category FROM businesses WHERE status = 'approved' ORDER BY category"
     );
-    res.render('index', { businesses: result.rows });
+    
+   res.render('index', { 
+      businesses: result.rows,
+      categories: categoriesResult.rows,
+      searchQuery: searchQuery,
+      categoryFilter: categoryFilter,
+      minRating: minRating,
+      priceLevel: priceLevel,
+      sortBy: sortBy,
+      currentPage: page,
+      totalPages: totalPages,
+      totalBusinesses: totalBusinesses
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
+});
+// Categories overview page
+app.get('/categories', async (req, res) => {
+  try {
+    // Get all categories with business counts
+    const result = await pool.query(
+      `SELECT category, COUNT(*) as business_count 
+       FROM businesses 
+       WHERE status = 'approved' 
+       GROUP BY category 
+       ORDER BY category`
+    );
+    
+    res.render('categories', { categories: result.rows });
   } catch (err) {
     console.error(err);
     res.status(500).send('Server error');
@@ -72,16 +191,27 @@ app.get('/business/:slug', async (req, res) => {
   }
 });
 
-// Category page
+// Category page with sort
 app.get('/category/:category', async (req, res) => {
   try {
+    const sortBy = req.query.sort || 'name';
+    const sortOptions = {
+      'name': 'name ASC',
+      'rating': 'rating DESC NULLS LAST',
+      'reviews': 'total_ratings DESC',
+      'newest': 'scraped_at DESC'
+    };
+    
+    const orderBy = sortOptions[sortBy] || 'name ASC';
+    
     const result = await pool.query(
-      "SELECT * FROM businesses WHERE category = $1 AND status = 'approved' ORDER BY name",
+      `SELECT * FROM businesses WHERE category = $1 AND status = 'approved' ORDER BY ${orderBy}`,
       [req.params.category]
     );
     res.render('category', { 
       category: req.params.category, 
-      businesses: result.rows 
+      businesses: result.rows,
+      sortBy: sortBy
     });
   } catch (err) {
     console.error(err);
@@ -147,8 +277,27 @@ app.post('/admin/scrape', async (req, res) => {
   const types = businessTypes.split(',').map(t => t.trim());
 
   try {
+    // Fetch municipality from database (for now, hardcoded to Fair Lawn ID = 1)
+    const municipalityResult = await pool.query(
+      'SELECT id, name, state FROM municipalities WHERE id = $1',
+      [1] // Fair Lawn
+    );
+    
+    if (municipalityResult.rows.length === 0) {
+      return res.status(500).send('Municipality not found in database');
+    }
+    
+    const municipality = municipalityResult.rows[0];
+    console.log(`\n🏙️  Scraping for: ${municipality.name}, ${municipality.state}`);
+    
+    // Initialize scraper with municipality config
+    const scraper = new BusinessScraper(
+      process.env.GOOGLE_PLACES_API_KEY,
+      { name: municipality.name, state: municipality.state }
+    );
+    
     console.log('\n🚀 Starting scrape...');
-    const businesses = await scraper.scrapeBusinessesByTypes(types, 20);
+    const businesses = await scraper.scrapeBusinessesByTypes(types, 20, pool);
 
     console.log(`\n💾 Saving ${businesses.length} businesses to database...`);
     
@@ -157,41 +306,32 @@ app.post('/admin/scrape', async (req, res) => {
 
     for (const business of businesses) {
       try {
-        // Check if already exists
-        const existing = await pool.query(
-          'SELECT id FROM businesses WHERE google_place_id = $1',
-          [business.google_place_id]
+        await pool.query(
+          `INSERT INTO businesses (
+            google_place_id, name, slug, category, subcategory, description,
+            street, city, state, zip, phone, website, google_maps_url,
+            latitude, longitude, rating, total_ratings, price_level,
+            opening_hours, keywords, status, scraped_at, municipality_id
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
+          [
+            business.google_place_id, business.name, business.slug,
+            business.category, business.subcategory, business.description,
+            business.street, business.city, business.state, business.zip,
+            business.phone, business.website, business.google_maps_url,
+            business.latitude, business.longitude, business.rating,
+            business.total_ratings, business.price_level,
+            JSON.stringify(business.opening_hours), business.keywords,
+            business.status, business.scraped_at, municipality.id
+          ]
         );
-
-        if (existing.rows.length === 0) {
-          await pool.query(
-            `INSERT INTO businesses (
-              google_place_id, name, slug, category, subcategory, description,
-              street, city, state, zip, phone, website, google_maps_url,
-              latitude, longitude, rating, total_ratings, price_level,
-              opening_hours, keywords, status, scraped_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
-            [
-              business.google_place_id, business.name, business.slug,
-              business.category, business.subcategory, business.description,
-              business.street, business.city, business.state, business.zip,
-              business.phone, business.website, business.google_maps_url,
-              business.latitude, business.longitude, business.rating,
-              business.total_ratings, business.price_level,
-              JSON.stringify(business.opening_hours), business.keywords,
-              business.status, business.scraped_at
-            ]
-          );
-          saved++;
-        } else {
-          skipped++;
-        }
+        saved++;
       } catch (err) {
         console.error(`Error saving ${business.name}:`, err.message);
+        skipped++;
       }
     }
 
-    console.log(`\n✅ Complete! Saved: ${saved}, Skipped (duplicates): ${skipped}`);
+    console.log(`\n✅ Complete! Saved: ${saved}, Skipped: ${skipped}`);
     res.redirect('/admin/dashboard');
   } catch (err) {
     console.error('Scraping error:', err);
@@ -234,7 +374,42 @@ app.post('/admin/business/:id/approve', async (req, res) => {
     res.status(500).send('Server error');
   }
 });
+// Bulk approve businesses
+app.post('/admin/businesses/bulk-approve', async (req, res) => {
+  if (!req.session.isAdmin) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  
+  const { ids } = req.body;
+  
+  try {
+    await pool.query(
+      "UPDATE businesses SET status = 'approved', reviewed_at = NOW() WHERE id = ANY($1)",
+      [ids]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
+// Bulk delete businesses
+app.post('/admin/businesses/bulk-delete', async (req, res) => {
+  if (!req.session.isAdmin) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  
+  const { ids } = req.body;
+  
+  try {
+    await pool.query('DELETE FROM businesses WHERE id = ANY($1)', [ids]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 // Update business
 app.post('/admin/business/:id/update', async (req, res) => {
   if (!req.session.isAdmin) {
