@@ -1,5 +1,6 @@
 require('dotenv').config();
 console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'UNDEFINED');
+console.log('PORT from Railway:', process.env.PORT);
 const express = require('express');
 const { Pool } = require('pg');
 const session = require('express-session');
