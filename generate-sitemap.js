@@ -12,7 +12,7 @@ const pool = new Pool({
 
 async function generateSitemap() {
   try {
-    const baseUrl = 'http://localhost:3000'; // Change to your production URL later
+   const baseUrl = process.env.BASE_URL || 'https://bestfairlawn.com';
     
     // Start sitemap
     let sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n';

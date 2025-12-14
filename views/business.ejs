@@ -10,10 +10,10 @@
 
 <!-- Open Graph / Social Media -->
 <meta property="og:type" content="business.business">
-<meta property="og:url" content="http://localhost:3000/business/<%= business.slug %>">
+<meta property="og:url" content="https://bestfairlawn.com/business/<%= business.slug %>">
 <meta property="og:title" content="<%= business.name %> - Fair Lawn, NJ">
 <meta property="og:description" content="<%= business.description ? business.description.substring(0, 160) : business.name + ' in Fair Lawn, NJ' %>">
-<meta property="og:image" content="http://localhost:3000/images/og-image.jpg">
+<meta property="og:image" content="https://bestfairlawn.com/images/og-image.jpg">
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary">
@@ -259,7 +259,7 @@
       <% if (business.price_level) { %>
       "priceRange": "<%= '€'.repeat(business.price_level) %>",
       <% } %>
-      "image": "http://localhost:3000/images/og-image.jpg"
+      "image": "https://bestfairlawn.com/images/og-image.jpg"
     }
     </script>
 </body>
